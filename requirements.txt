@@ -1,4 +1,5 @@
 flask
+flask_sqlalchemy
+pre-commit
 psycopg2-binary
 python-dotenv
-flask_sqlalchemy
