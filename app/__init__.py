@@ -18,3 +18,8 @@ jwt = JWTManager(app)
 db = SQLAlchemy(app)
 # workaround for cyclic import
 from app import routes
+
+if os.getenv("CREATE_DB", "false").lower() == "true":
+    with app.app_context():
+        db.create_all()
+        print("Database created!")
