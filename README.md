@@ -53,53 +53,61 @@ This project is a RESTful API built using Flask and Supabase for managing users,
 
 ## Endpoints
 
-### Authentication
+### User
 
 - **Register user**
-  - **URL:** `/register`
+  - **URL:** `/users/register`
   - **Method:** `POST`
   - **Description:** Register a new user.
 
 - **Login user**
-  - **URL:** `/login`
+  - **URL:** `/users/login`
   - **Method:** `POST`
   - **Description:** Login user and receive a JWT token.
 
+- **Get user profile and links**
+  - **URL:** `/users/profile`
+  - **Method:** `GET`
+  - **Description:** Retrieve the logged-in user's profile and their associated links (JWT required).
+
 - **Delete user**
-  - **URL:** `/users/<uuid:user_id>`
+  - **URL:** `/users`
   - **Method:** `DELETE`
   - **Description:** Delete the specified user (JWT required).
 
 ### Links
 
 - **Get user links**
-  - **URL:** `/users/<uuid:user_id>/links`
+  - **URL:** `/links/<uuid:user_id>`
   - **Method:** `GET`
   - **Description:** Retrieve all links associated with the specified user.
+  - **Query Parameters:**
+    - `grouped` (optional): If set to `true`, returns links grouped by categories. If not provided or set to `false`, returns a flat list of links with their associated categories.
+
+- **Add link**
+  - **URL:** `/links`
+  - **Method:** `POST`
+  - **Description:** Add link (JWT required).
 
 - **Modify link**
-  - **URL:** `/users/<uuid:user_id>/links/<uuid:link_id>`
+  - **URL:** `/links/<uuid:link_id>`
   - **Method:** `PUT`
-  - **Description:** Modify an existing user link.
+  - **Description:** Modify an existing user link (JWT required).
 
 - **Delete link**
-  - **URL:** `/users/<uuid:user_id>/links/<uuid:link_id>`
+  - **URL:** `/links/<uuid:link_id>`
   - **Method:** `DELETE`
-  - **Description:** Delete an existing user link.
+  - **Description:** Delete an existing user link (JWT required).
+
 
 ### Categories
 
 - **Add category**
   - **URL:** `/categories`
   - **Method:** `POST`
-  - **Description:** Add a new category.
-
-- **Add link to category**
-  - **URL:** `/users/<uuid:user_id>/links/<uuid:link_id>/category/<uuid:category_id>`
-  - **Method:** `PUT`
-  - **Description:** Assign a category to a link.
+  - **Description:** Add a new category (JWT required).
 
 - **Delete category**
   - **URL:** `/categories/<uuid:category_id>`
   - **Method:** `DELETE`
-  - **Description:** Delete a category (the `category_id` in associated links will be set to `NULL`).
+  - **Description:** Delete a category (JWT required).
