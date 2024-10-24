@@ -1,13 +1,12 @@
-from flask import Flask
+from flask import Flask, jsonify
 import os
 from dotenv import load_dotenv
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager
-# predeifned variable that set a reference (module name - "app")
 
+# predeifned variable that set a reference (module name - "app")
 load_dotenv('.flaskenv')
 load_dotenv('.env')
-
 
 app = Flask(__name__)
 
@@ -17,7 +16,30 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("DATABASE_URL")
 jwt = JWTManager(app)
 db = SQLAlchemy(app)
 # workaround for cyclic import
-from app import routes
+
+from app.routes.users import users_bp
+from app.routes.categories import categories_bp
+from app.routes.links import links_bp
+
+app.register_blueprint(users_bp, url_prefix='/users')
+app.register_blueprint(categories_bp, url_prefix='/categories')
+app.register_blueprint(links_bp, url_prefix='/links')
+
+
+def handle_exception(e):
+    if hasattr(e, 'code'):
+        response = {
+            "message": e.description
+        }
+        return jsonify(response), e.code
+    else:
+        response = {
+            "message": str(e)
+        }
+        return jsonify(response), 500
+
+
+app.register_error_handler(Exception, handle_exception)
 
 if os.getenv("CREATE_DB", "false").lower() == "true":
     with app.app_context():

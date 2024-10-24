@@ -70,10 +70,6 @@ This project is a RESTful API built using Flask and Supabase for managing users,
   - **Method:** `GET`
   - **Description:** Retrieve the logged-in user's profile and their associated links (JWT required).
 
-- **Delete user**
-  - **URL:** `/users`
-  - **Method:** `DELETE`
-  - **Description:** Delete the specified user (JWT required).
 
 ### Links
 
