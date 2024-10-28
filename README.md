@@ -39,6 +39,11 @@ API documentation is at "/swagger-ui" endpoint
     SUPABASE_KEY=<your-supabase-key>
     JWT_SECRET_KEY=<your-jwt-key>
     ```
+   
+3. To run server:
+    ```bash
+   flask run
+    ```
 
 
 
