@@ -1,99 +1,114 @@
-from flask import Blueprint, jsonify, request, abort
+from flask_smorest import Blueprint, abort
+from flask.views import MethodView
+from flask import jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from app.models import Category, CategorySchema
+from app.models import (
+    Category,
+    CategorySchema,
+    AssignLinksSchema,
+    CreateUpdateCategorySchema,
+    ResponseSchema,
+    Link,
+)
 from app import db
-from marshmallow import ValidationError
 
-categories_bp = Blueprint("categories", __name__)
+blp = Blueprint(
+    "categories",
+    __name__,
+    url_prefix="/categories",
+    description="Operations on categories",
+)
 
-category_schema = CategorySchema(exclude=["user_id", "id"])
+
+@blp.route("/")
+class CategoryList(MethodView):
+    @jwt_required()
+    @blp.response(200, CategorySchema(many=True))
+    def get(self):
+        """List all categories for the authenticated user"""
+        user_id = get_jwt_identity()
+        categories = Category.query.filter_by(user_id=user_id).all()
+        return categories, 200
 
 
-@categories_bp.route("", methods=["POST"])
-@jwt_required()
-def add_category():
-    user_id = get_jwt_identity()
-
-    try:
-        category = category_schema.load(request.json)
+@blp.route("/")
+class CategoryResource(MethodView):
+    @jwt_required()
+    @blp.arguments(CreateUpdateCategorySchema)
+    @blp.response(201, CategorySchema)
+    def post(self, category_data):
+        """Add a new category for the authenticated user"""
+        user_id = get_jwt_identity()
         existing_category = Category.query.filter_by(
-            user_id=user_id, name=category["name"]
+            user_id=user_id, name=category_data["name"]
         ).first()
         if existing_category:
-            return abort(
-                400, description="This URL already exists for the user."
-            )
-        category["user_id"] = user_id
-        category = Category(**category)
+            abort(400, message="This category already exists for the user.")
+        category_data["user_id"] = user_id
+        category = Category(**category_data)
         db.session.add(category)
         db.session.commit()
-        return (
-            jsonify(
-                {
-                    "category_id": category.id,
-                    "message": "Category added!",
-                }
-            ),
-            201,
-        )
-    except ValidationError as e:
-        return abort(400, description=e.messages)
-    pass
+        return category, 201
 
 
-@categories_bp.route("/<uuid:category_id>", methods=["PUT"])
-@jwt_required()
-def modify_category(category_id):
-    user_id = get_jwt_identity()
+@blp.route("/<uuid:category_id>/links")
+class CategoryLinks(MethodView):
+    @jwt_required()
+    @blp.arguments(AssignLinksSchema)
+    @blp.response(200, ResponseSchema)
+    def patch(self, link_data, category_id):
+        """Assign category to links for the authenticated user"""
+        user_id = get_jwt_identity()
+        category = Category.query.filter_by(
+            id=category_id, user_id=user_id
+        ).first()
+        if not category:
+            abort(404, message="Category not found")
+        link_ids = link_data["link_ids"]
+        links = Link.query.filter(
+            Link.id.in_(link_ids), Link.user_id == user_id
+        ).all()
+        if len(links) != len(link_ids):
+            abort(
+                400,
+                message="Some links not found or belong to a different user",
+            )
+        for link in links:
+            link.category_id = category_id
+        db.session.commit()
+        return jsonify({"message": "Links assigned to category"})
 
-    category = Category.query.get(category_id)
 
-    if not category:
-        return abort(404, description="Category not found")
-    try:
-        new_category_data = category_schema.load(request.json)
-
+@blp.route("/<uuid:category_id>")
+class CategoryById(MethodView):
+    @jwt_required()
+    @blp.arguments(CreateUpdateCategorySchema)
+    @blp.response(200, CategorySchema)
+    def put(self, updated_data, category_id):
+        """Modify an existing category by ID for the authenticated user"""
+        user_id = get_jwt_identity()
+        category = Category.query.get(category_id)
+        if not category:
+            abort(404, message="Category not found")
         existing_category = Category.query.filter(
             Category.user_id == user_id,
-            Category.name == new_category_data["name"],
+            Category.name == updated_data["name"],
             Category.id != category_id,
         ).first()
         if existing_category:
-            return abort(
-                400, description="This name already exists for the user."
-            )
-
-        for key, value in new_category_data.items():
+            abort(400, message="This name already exists for the user.")
+        for key, value in updated_data.items():
             setattr(category, key, value)
-
         db.session.commit()
-        return (
-            jsonify(
-                {
-                    "category_id": category.id,
-                    "message": "Category Modified!",
-                }
-            ),
-            201,
-        )
-    except ValidationError as e:
-        return abort(400, description=e.messages)
+        return category, 200
 
-
-@categories_bp.route("/<uuid:category_id>", methods=["DELETE"])
-@jwt_required()
-def delete_category(category_id):
-    category = Category.query.get(category_id)
-    if not category:
-        return abort(400, description="Category not found")
-    db.session.delete(category)
-    db.session.commit()
-    return (
-        jsonify(
-            {
-                "category_id": category.id,
-                "message": "Category deleted!",
-            }
-        ),
-        201,
-    )
+    @jwt_required()
+    @blp.response(204, ResponseSchema)
+    def delete(self, category_id):
+        """Delete a category by ID for the authenticated user"""
+        category = Category.query.get(category_id)
+        if not category:
+            abort(404, description="Category not found")
+        db.session.delete(category)
+        db.session.commit()
+        return jsonify({"message": "Category deleted successfully!"})

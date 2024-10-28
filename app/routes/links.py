@@ -1,120 +1,84 @@
-from flask import Blueprint, jsonify, request, abort
-from app.models import Link, LinkSchema, Category
-from app import db
+from flask_smorest import Blueprint, abort
+from flask import jsonify
+from flask.views import MethodView
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from marshmallow import ValidationError
+from app import db
+from app.models import (
+    Link,
+    User,
+    MinimalLinkSchema,
+    CreateUpdateLinkSchema,
+    ResponseSchema,
+    ResponseLinkSchema,
+)
 
-links_bp = Blueprint("links", __name__)
-
-link_schema = LinkSchema(exclude=["user_id", "category_id", "id"])
-
-
-@links_bp.route("/<uuid:user_id>", methods=["GET"])
-def get_user_links(user_id):
-    by_categories = request.args.get("by_categories", "false") == "true"
-    if by_categories:
-        categories = Category.query.filter_by(user_id=user_id).all()
-        categories_with_links = []
-        for category in categories:
-            category_data = {
-                "name": category.name,
-                "description": category.description,
-                "links": link_schema.dump(category.links, many=True),
-            }
-            categories_with_links.append(category_data)
-
-        return jsonify({"categories": categories_with_links}), 200
-    else:
-        links = link_schema.dump(
-            Link.query.filter_by(user_id=user_id).all(), many=True
-        )
-        return jsonify({"links": links}), 200
+blp = Blueprint(
+    "links", "links", url_prefix="/links", description="Operation on links"
+)
 
 
-@links_bp.route("", methods=["POST"])
-@jwt_required()
-def add_link():
-    user_id = get_jwt_identity()
+@blp.route("/<uuid:user_id>")
+class UserLinks(MethodView):
+    @blp.response(200, MinimalLinkSchema(many=True))
+    def get(self, user_id):
+        """Get all user links"""
+        user = User.query.filter_by(id=user_id).first()
+        if not user:
+            abort(404, message="User not found")
+        links = Link.query.filter_by(user_id=user_id).all()
+        return links
 
-    try:
-        link = link_schema.load(request.json)
+
+@blp.route("/")
+class LinkResource(MethodView):
+    @jwt_required()
+    @blp.arguments(CreateUpdateLinkSchema)
+    @blp.response(201, ResponseLinkSchema)
+    def post(self, new_data):
+        """Add a new link for the authenticated user"""
+        user_id = get_jwt_identity()
         existing_link = Link.query.filter_by(
-            user_id=user_id, url=link["url"]
+            user_id=user_id, url=new_data["url"]
         ).first()
         if existing_link:
-            return abort(
-                400, description="This URL already exists for the user."
-            )
-        link["user_id"] = user_id
-        link = Link(**link)
+            abort(400, message="This URL already exists for the user.")
+        new_data["user_id"] = user_id
+        link = Link(**new_data)
         db.session.add(link)
         db.session.commit()
-        return (
-            jsonify(
-                {
-                    "link_id": link.id,
-                    "message": "Link added!",
-                }
-            ),
-            201,
-        )
-    except ValidationError as e:
-        return abort(400, description=e.messages)
+        return link
 
 
-@links_bp.route("/<uuid:link_id>", methods=["PUT"])
-@jwt_required()
-def modify_link(link_id):
-    user_id = get_jwt_identity()
-
-    link = Link.query.get(link_id)
-
-    if not link:
-        return abort(404, description="Link not found")
-    try:
-        new_link_data = link_schema.load(request.json)
-
+@blp.route("/<uuid:link_id>")
+class LinkById(MethodView):
+    @jwt_required()
+    @blp.arguments(CreateUpdateLinkSchema)
+    @blp.response(200, ResponseLinkSchema)
+    def put(self, update_data, link_id):
+        """Update link by ID for the authenticated user"""
+        user_id = get_jwt_identity()
+        link = Link.query.get(link_id)
+        if not link:
+            abort(404, message="Link not found")
         existing_link = Link.query.filter(
             Link.user_id == user_id,
-            Link.url == new_link_data["url"],
+            Link.url == update_data["url"],
             Link.id != link_id,
         ).first()
         if existing_link:
-            return abort(
-                400, description="This URL already exists for the user."
-            )
-
-        for key, value in new_link_data.items():
+            abort(400, message="This URL already exists for the user.")
+        for key, value in update_data.items():
             setattr(link, key, value)
-
         db.session.commit()
-        return (
-            jsonify(
-                {
-                    "link_id": link.id,
-                    "message": "Link Modified!",
-                }
-            ),
-            201,
-        )
-    except ValidationError as e:
-        return abort(400, description=e.messages)
+        return link
 
-
-@links_bp.route("/<uuid:link_id>", methods=["DELETE"])
-@jwt_required()
-def delete_link(link_id):
-    link = Link.query.get(link_id)
-    if not link:
-        return abort(400, description="Link not found")
-    db.session.delete(link)
-    db.session.commit()
-    return (
-        jsonify(
-            {
-                "link_id": link.id,
-                "message": "Link deleted!",
-            }
-        ),
-        201,
-    )
+    @jwt_required()
+    @blp.response(204, ResponseSchema)
+    def delete(self, link_id):
+        """Delete link by ID for the authenticated user"""
+        link = Link.query.get(link_id)
+        if not link:
+            abort(404, message="Link not found")
+        db.session.delete(link)
+        db.session.commit()
+        return jsonify({"message": "Link deleted successfully!"})

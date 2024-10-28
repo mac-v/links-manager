@@ -1,15 +1,21 @@
 # Flask API with Supabase - User, Links, and Categories
 
-This project is a RESTful API built using Flask and Supabase for managing users, links, and categories. The application allows you to create users, add links to users, organize links by categories, and manage both links and categories.
+This project is a RESTful API built using Flask and Supabase for managing users, links, and categories.
 
 ## Features
-- User registration, login, and JWT-based authentication.
-- CRUD operations for links and categories.
+- User registration, login, profile management, and JWT-based authentication.
+- Listing, adding, modifying, and deleting links.
+- Listing, adding, modifying, and associating categories with links.
+
 
 ## Prerequisites
-- Python 3.x
+- Python 3.11
 - Flask
 - Supabase account and setup
+
+## Endpoints
+
+API documentation is at "/swagger-ui" endpoint
 
 ## Installation
 
@@ -35,75 +41,7 @@ This project is a RESTful API built using Flask and Supabase for managing users,
     ```
 
 
-4. **Automatic Table Creation**:
-   Set up flask enviroment variables. Add the following to a `.flaskenv` file:
-   ```bash
-    FLASK_APP=links_manager.py
-    FLASK_DEBUG=1
-    FLASK_ENVIROMENT=development
-    CREATE_DB=true
-   ```
-5. **Automatic Table Creation**:
-   The application will automatically create the required tables.
-
-   To run app:
-   ```bash
-   flask run
-   ```
-
-## Endpoints
-
-### User
-
-- **Register user**
-  - **URL:** `/users/register`
-  - **Method:** `POST`
-  - **Description:** Register a new user.
-
-- **Login user**
-  - **URL:** `/users/login`
-  - **Method:** `POST`
-  - **Description:** Login user and receive a JWT token.
-
-- **Get user profile and links**
-  - **URL:** `/users/profile`
-  - **Method:** `GET`
-  - **Description:** Retrieve the logged-in user's profile and their associated links (JWT required).
 
 
-### Links
-
-- **Get user links**
-  - **URL:** `/links/<uuid:user_id>`
-  - **Method:** `GET`
-  - **Description:** Retrieve all links associated with the specified user.
-  - **Query Parameters:**
-    - `grouped` (optional): If set to `true`, returns links grouped by categories. If not provided or set to `false`, returns a flat list of links with their associated categories.
-
-- **Add link**
-  - **URL:** `/links`
-  - **Method:** `POST`
-  - **Description:** Add link (JWT required).
-
-- **Modify link**
-  - **URL:** `/links/<uuid:link_id>`
-  - **Method:** `PUT`
-  - **Description:** Modify an existing user link (JWT required).
-
-- **Delete link**
-  - **URL:** `/links/<uuid:link_id>`
-  - **Method:** `DELETE`
-  - **Description:** Delete an existing user link (JWT required).
 
 
-### Categories
-
-- **Add category**
-  - **URL:** `/categories`
-  - **Method:** `POST`
-  - **Description:** Add a new category (JWT required).
-
-- **Delete category**
-  - **URL:** `/categories/<uuid:category_id>`
-  - **Method:** `DELETE`
-  - **Description:** Delete a category (JWT required).
